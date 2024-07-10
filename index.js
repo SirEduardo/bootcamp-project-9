@@ -19,13 +19,12 @@ const scrapper = async (url) => {
   }
 
   await repeat(page);
-  await browser.close();
+
 };
 
 const repeat = async (page) => {
-  await page.waitForSelector(
-    ".sc-b0a2f165-0.hJZrCI.sc-1ecb3c22-3.kAEzmY.sc-1036526f-2.bmkiWp"
-  );
+ 
+  await page.waitForSelector('[data-test="mms-search-srp-productlist"] div.sc-b0c0d999-0', { timeout: 10000 })
 
   const arrayDivs = await page.$$(
     '[data-test="mms-search-srp-productlist"] div.sc-b0c0d999-0'
@@ -37,16 +36,9 @@ const repeat = async (page) => {
 
   for (const pcDivs of arrayDivs) {
     try {
-      let price = await pcDivs.$eval(
-        ".sc-f524209-0.eDhLj span.sc-3f2da4f5-0.sc-dd1a61d2-2.efAprc",
-        (el) => el.textContent.trim()
-      );
-
-      let title = await pcDivs.$eval("p.sc-3f2da4f5-0.fLePRG", (el) =>
-        el.textContent.trim()
-      );
-
-      let img = await pcDivs.$eval("img", (el) => el.src);
+      let price = await safeEvaluate(pcDivs, ".sc-f524209-0.eDhLj span.sc-3f2da4f5-0.sc-dd1a61d2-2.efAprc");
+      let title = await safeEvaluate(pcDivs, "p.sc-3f2da4f5-0.fLePRG");
+      let img = await safeEvaluate(pcDivs, "img", el => el.src);
 
       const pc = {
         img,
@@ -61,9 +53,20 @@ const repeat = async (page) => {
   await paginate(page);
 };
 
+const safeEvaluate = async (element, selector, evalFn = el => el.textContent.trim()) => {
+  try {
+    await element.waitForSelector(selector, { timeout: 5000 });
+    return await element.$eval(selector, evalFn);
+  } catch (error) {
+    console.error(`Error evaluando un selector ${selector}: ${error}`);
+  }
+}
+
 
 const paginate = async (page) => {
-  const nextPageButton = await page.$('[data-test="mms-search-srp-loadmore"]');
+
+ try {
+  const nextPageButton = await page.$('[data-test="mms-search-srp-loadmore"] span.sc-a8663f6a-0.iWuUrL');
   if (nextPageButton) {
     try {
       await nextPageButton.click();
@@ -76,6 +79,9 @@ const paginate = async (page) => {
   } else {
     write(pcArray);
   }
+ } catch (error) {
+  console.log("Error encontrando el boton", error);
+ }
 };
 
 const write = (pcArray) => {
