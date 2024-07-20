@@ -23,8 +23,6 @@ const scrapper = async (url) => {
 };
 
 const repeat = async (page) => {
- 
-  await page.waitForSelector('[data-test="mms-search-srp-productlist"] div.sc-b0c0d999-0', { timeout: 10000 })
 
   const arrayDivs = await page.$$(
     '[data-test="mms-search-srp-productlist"] div.sc-b0c0d999-0'
@@ -66,11 +64,11 @@ const safeEvaluate = async (element, selector, evalFn = el => el.textContent.tri
 const paginate = async (page) => {
 
  try {
-  const nextPageButton = await page.$('[data-test="mms-search-srp-loadmore"] span.sc-a8663f6a-0.iWuUrL');
+  const nextPageButton = await page.$('[data-test="mms-search-srp-loadmore"]');
   if (nextPageButton) {
     try {
       await nextPageButton.click();
-      await page.waitForNavigation();
+      await autoscroll(page)
       await repeat(page);
     } catch (error) {
       console.error(`Error en la paginación: ${error}`);
@@ -83,6 +81,24 @@ const paginate = async (page) => {
   console.log("Error encontrando el boton", error);
  }
 };
+
+const autoscroll = async (page) => {
+  await page.evaluate(async () => {
+    await new Promise((resolve, reject) => {
+      let totalHeight = 0
+      const distance = 100
+      const timer = setInterval(() => {
+        window.scrollBy(0, distance)
+        totalHeight += distance
+
+        if (totalHeight >= document.body.scrollHeight) {
+          clearInterval(timer)
+          resolve()
+        }
+      }, 100)
+    })
+  })
+}
 
 const write = (pcArray) => {
   fs.writeFile("pc.json", JSON.stringify(pcArray, null, 2), (err) => {
